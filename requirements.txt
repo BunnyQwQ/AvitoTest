@@ -1,0 +1,19 @@
+# Python 3.12. PyTorch с CUDA ставится отдельной командой:
+#   pip install torch==2.11.0 --index-url https://download.pytorch.org/whl/cu128
+numpy==2.5.3
+pandas==3.0.6
+pyarrow==25.0.1
+scipy==1.18.1
+scikit-learn==1.9.1
+lightgbm==4.7.0
+pymorphy3==2.0.6
+pymorphy3-dicts-ru==2.4.417150.4580142
+sentence-transformers==6.1.0
+transformers==5.17.0
+datasets==5.0.1
+accelerate==1.15.0
+tqdm==4.70.1
+
+# только для ноутбука с EDA
+matplotlib==3.11.2
+ipykernel==7.3.0

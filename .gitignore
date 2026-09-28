@@ -1,0 +1,16 @@
+# данные соревнования и веса модели в репозиторий не кладём — см. data/README.md и models/README.md
+data/*
+!data/README.md
+models/*
+!models/README.md
+
+# промежуточные результаты пайплайна
+cache/
+cache_*/
+
+# окружение и IDE
+.venv/
+.idea/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
