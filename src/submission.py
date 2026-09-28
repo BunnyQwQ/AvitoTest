@@ -12,7 +12,10 @@ def write_answer(bq: pd.DataFrame, pred: dict, corpus_ids: set, path=C.SUBMISSIO
         top = list(dict.fromkeys(top))[:C.TOP_K]
         rows.append((qid, " ".join(top)))
     path.parent.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(rows, columns=["query_id", "answer"]).to_csv(path, index=False, encoding="utf-8")
+    # \r\n явно, а не по умолчанию для ОС: отправленный файл писался на Windows,
+    # так ответ совпадает с ним байт в байт на любой системе
+    pd.DataFrame(rows, columns=["query_id", "answer"]).to_csv(path, index=False, encoding="utf-8",
+                                                              lineterminator="\r\n")
 
     # перечитываю как строки (как это сделает проверяющая система) и проверяю всё из условия
     chk = pd.read_csv(path, dtype=str, keep_default_na=False)
