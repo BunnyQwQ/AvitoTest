@@ -1,8 +1,8 @@
-"""Дообучение multilingual-e5-base на парах «текст запроса → выбранное объявление».
+"""Дообучение multilingual-e5-base на парах (текст запроса, выбранное объявление).
 
-Функция потерь — MultipleNegativesRankingLoss: для каждой пары остальные объявления
+Функция потерь - MultipleNegativesRankingLoss: для каждой пары остальные объявления
 из батча служат негативами. Cached-вариант (GradCache) позволяет батч 256 на 8 ГБ.
-Учусь только на history (train без валидационных запросов) — иначе модель
+Обучаю только на history (train без валидационных запросов), иначе модель
 запомнит ответы валидации и оценка будет завышена.
 """
 from __future__ import annotations
@@ -17,7 +17,7 @@ from .dense import build_passages, load_st_model
 
 
 def make_pairs(history: pd.DataFrame, item_texts: pd.DataFrame, filters, max_per_text: int = 50) -> pd.DataFrame:
-    """Уникальные пары (запрос, текст объявления). Частые запросы вроде «маникюр»
+    """Уникальные пары (запрос, текст объявления). Частые запросы вроде "маникюр"
     обрезаю до 50 пар, чтобы модель не перекосило в сторону головы распределения:
     бенчмарк в основном из редких формулировок."""
     pairs = history[["qn", "item_id"]].drop_duplicates()
@@ -52,10 +52,10 @@ def finetune(base_model: str, pairs: pd.DataFrame, out_dir, epochs: int = 1, bat
 
 
 def train_encoder(d: dict, out_dir=C.MODEL_DIR, base_model: str = C.BASE_MODEL):
-    """Полный цикл дообучения: пары из истории → модель в out_dir (~70 минут на RTX 3080 Laptop)."""
+    """Полный цикл дообучения: пары из истории -> модель в out_dir (~70 минут на RTX 3080 Laptop)."""
     import torch
     torch.use_deterministic_algorithms(True, warn_only=True)
-    # в history нет описаний — тексты объявлений беру из исходного train
+    # в history нет описаний, поэтому тексты объявлений беру из исходного train
     tr_items = pd.read_parquet(C.TRAIN_PATH, columns=["item_id", "item_title_raw", "item_infm_params_text",
                                                         "item_description_raw"]).drop_duplicates("item_id")
     for c in ["item_title_raw", "item_infm_params_text", "item_description_raw"]:

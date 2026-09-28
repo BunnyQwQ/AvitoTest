@@ -1,6 +1,6 @@
 """Статистики истории выборов: популярность объявлений и подкатегорий.
 
-На валидации история = train без валидационных запросов, на бенчмарке — весь train.
+На валидации история = train без валидационных запросов, на бенчмарке весь train.
 """
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ class HistoryStats:
         # популярность подкатегории среди выборов
         mc = history["item_microcat_id"].value_counts(normalize=True)
         self.mc_logp = np.log(items["item_microcat_id"].map(mc).fillna(0).to_numpy(np.float32) + 1e-6)
-        # доля выборов «в своей локации» по подкатегориям: у онлайн-услуг она низкая,
+        # доля выборов в своей же локации по подкатегориям: у онлайн-услуг она низкая,
         # и дальняя локация для них не так страшна (сглаживаю к общему среднему)
         same = (history["search_location_id"] == history["item_location_id"]).astype(np.float32)
         g = same.groupby(history["item_microcat_id"]).agg(["sum", "count"])

@@ -23,7 +23,7 @@ SUBMISSION_PATH = Path(os.environ.get("AVITO_SUBMISSION", ROOT / "submission" / 
 SEED = 42
 TOP_K = 50
 
-# Валидация: 8 «псевдо-бенчмарков» из train по 2452 запроса — столько же, сколько в бенчмарке.
+# Валидация: 8 псевдо-бенчмарков из train по 2452 запроса, столько же, сколько в бенчмарке.
 CHUNK_SIZE = 2452
 N_VAL_CHUNKS = 8
 TRAIN_CHUNKS = (0, 1, 2, 3, 4)   # обучение ранкера

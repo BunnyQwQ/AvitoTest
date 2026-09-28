@@ -1,10 +1,10 @@
 """BM25F по лемматизированному тексту объявления (заголовок, параметры, описание).
 
 Поля складываются с весами до насыщения (BM25F):
-    tf~(d,t) = Σ_f w_f · tf_f(d,t) / (1 - b_f + b_f · len_f(d) / avglen_f)
-    score(q,d) = Σ_{t∈q} idf(t) · tf~ / (k1 + tf~)
-Всё хранится в разреженных матрицах, так что скоры запроса по всему корпусу —
-одно матричное умножение.
+    tf~(d, t) = sum_f w_f * tf_f(d, t) / (1 - b_f + b_f * len_f(d) / avglen_f)
+    score(q, d) = sum_{t in q} idf(t) * tf~ / (k1 + tf~)
+Всё хранится в разреженных матрицах, так что скоры запроса по всему корпусу
+считаются одним матричным умножением.
 """
 from __future__ import annotations
 
@@ -48,7 +48,7 @@ class BM25F:
         self.tf = {f: _tf_matrix(docs[f], V) for f in FIELDS}
         self.lens = {f: np.asarray(self.tf[f].sum(axis=1)).ravel() for f in FIELDS}
         n = len(items)
-        # document frequency считаю по «любому полю»
+        # document frequency считаю по всем полям сразу (слово есть хотя бы в одном)
         any_field = sum((self.tf[f] > 0).astype(np.float32) for f in FIELDS)
         df = np.asarray((any_field > 0).sum(axis=0)).ravel()
         self.idf = np.log(1.0 + (n - df + 0.5) / (df + 0.5)).astype(np.float32)
@@ -67,8 +67,8 @@ class BM25F:
         tfc = tfc.tocsr()
         tfc.data = tfc.data / (k1 + tfc.data)
         W = tfc @ sp.diags(self.idf)
-        self.WT = W.T.tocsr().astype(np.float32)        # слова × объявления
-        # BM25 по каждому полю отдельно — пойдут признаками в ранкер
+        self.WT = W.T.tocsr().astype(np.float32)        # слова x объявления
+        # BM25 по каждому полю отдельно, пойдут признаками в ранкер
         self.field_WT = {}
         for f, b in zip(FIELDS, bs):
             m = (sp.diags(self._field_norm(f, b).astype(np.float32)) @ self.tf[f]).tocsr()
@@ -76,7 +76,7 @@ class BM25F:
             self.field_WT[f] = (m @ sp.diags(self.idf)).T.tocsr().astype(np.float32)
 
     def query_matrix(self, queries) -> sp.csr_matrix:
-        """Запросы × слова, каждое слово запроса учитывается один раз."""
+        """Матрица запросы x слова, каждое слово запроса учитывается один раз."""
         rows = [sorted(set(self.vocab.ids(T.lemmas(q, drop_stop=True), grow=False))) for q in queries]
         indptr = np.zeros(len(rows) + 1, dtype=np.int64)
         indptr[1:] = np.cumsum([len(r) for r in rows])

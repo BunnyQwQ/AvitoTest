@@ -1,8 +1,8 @@
 """Семантический поиск на эмбеддингах (multilingual-e5-base, дообученный на train).
 
 Нужен для синонимов и смысловых связей, где слова не совпадают совсем:
-«разгрузка вагонов» → «Бригада грузчиков». Модели семейства e5 ждут префиксы
-«query: » у запроса и «passage: » у документа.
+"разгрузка вагонов" -> "Бригада грузчиков". Модели семейства e5 ждут префиксы
+"query: " у запроса и "passage: " у документа.
 """
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ _SERVICE_RE = re.compile(r"(?:Услуга|Название услуги) (.+?)(
 
 
 def _known_values(filters) -> dict[str, list[str]]:
-    """Значения «Вид услуги» / «Тип услуги», которые встречаются в фильтрах поиска."""
+    """Значения "Вид услуги" и "Тип услуги", которые встречаются в фильтрах поиска."""
     vals = {"Вид услуги": set(), "Тип услуги": set()}
     for f in filters:
         for k, vs in parse_filter(f).items():
@@ -28,8 +28,8 @@ def _known_values(filters) -> dict[str, list[str]]:
 
 def build_passages(items: pd.DataFrame, filters, desc_chars: int = 300) -> list[str]:
     """Текст объявления для модели: заголовок, вид/тип услуги, названия услуг
-    из прайс-листа и начало описания. Остальные параметры («Рабочие дни…»,
-    «График работы…») — шум, их не беру."""
+    из прайс-листа и начало описания. Остальные параметры ("Рабочие дни...",
+    "График работы...") для модели просто шум, их не беру."""
     known = _known_values(filters)
     vid_re = re.compile("Вид услуги (" + "|".join(map(re.escape, known["Вид услуги"])) + ")")
     tip_re = re.compile("Тип услуги (" + "|".join(map(re.escape, known["Тип услуги"])) + ")")
@@ -61,9 +61,9 @@ def load_st_model(name_or_path: str, device: str = "cuda", max_seq_length: int =
     """Загрузка sentence-transformers модели.
 
     deepvk/USER-base (участвовала в сравнении моделей) не грузится в
-    sentence-transformers 6.x из-за конфига модуля Normalize — для неё собираю
-    ту же архитектуру вручную: трансформер → mean-пулинг → нормализация.
-    Префикс по умолчанию отключаю: префиксы ставлю сам.
+    sentence-transformers 6.x из-за конфига модуля Normalize, поэтому для неё собираю
+    ту же архитектуру вручную: трансформер -> mean pooling -> нормализация.
+    Префикс по умолчанию отключаю, префиксы ставлю сам.
     """
     from sentence_transformers import SentenceTransformer, models
     try:
@@ -87,7 +87,7 @@ class DenseEncoder:
 
     def encode(self, texts, is_query: bool, batch_size: int = 256) -> np.ndarray:
         pref = self.qp if is_query else self.pp
-        # prompt="" — чтобы библиотека не дописала префикс модели второй раз
+        # prompt="", чтобы библиотека не дописала префикс модели второй раз
         emb = self.model.encode([pref + t for t in texts], batch_size=batch_size, normalize_embeddings=True,
                                 convert_to_numpy=True, show_progress_bar=False, prompt="")
         return emb.astype(np.float16)

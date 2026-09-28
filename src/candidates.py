@@ -2,14 +2,14 @@
 
 Для каждого запроса скоры считаются сразу по всему корпусу (numpy / GPU), затем
 берётся объединение топов нескольких источников:
-  * BM25F по леммам — точные совпадения слов;
-  * эмбеддинги — синонимы и смысл;
-  * символьные n-граммы — опечатки и слитное написание;
-  * классификатор подкатегорий — запросы без общих слов с объявлением;
+  * BM25F по леммам: точные совпадения слов;
+  * эмбеддинги: синонимы и смысл;
+  * символьные n-граммы: опечатки и слитное написание;
+  * классификатор подкатегорий: запросы без общих слов с объявлением;
   * объявления, которые уже выбирали по такому же тексту.
-К текстовому скору каждого источника прибавляется одна и та же «база»:
-0.5·log P(локация объявления | локация поиска) + 2·[фильтр выполнен] — так локация
-и фильтр учитываются мягко, без жёсткого отсечения. Коэффициенты подобраны на валидации.
+К скору каждого источника прибавляется одна и та же база:
+0.5 * log P(локация объявления | локация поиска) + 2 * [фильтр выполнен].
+Так локация и фильтр учитываются мягко, без жёсткого отсечения. Коэффициенты подбирал на валидации.
 """
 from __future__ import annotations
 
@@ -52,7 +52,7 @@ class Resources:
     fm: FilterMatcher
     clf: QueryAttrClassifier
     hist: HistoryStats
-    item_emb: np.ndarray                      # (N × d) float16, L2-нормированные
+    item_emb: np.ndarray                      # (N x d), float16, нормированы по L2
     static: dict = field(default_factory=dict)
 
     def __post_init__(self):
@@ -69,13 +69,13 @@ class Resources:
             "desc_len": np.log1p(it["item_description_raw"].str.len().to_numpy(np.float32)),
             "params_len": np.log1p(it["item_infm_params_text"].str.len().to_numpy(np.float32)),
         }
-        # нормализованные заголовки для признака «запрос целиком входит в заголовок»
+        # нормализованные заголовки для признака q_in_title (запрос целиком входит в заголовок)
         self.title_norm = np.array([" ".join(str(s).lower().replace("ё", "е").split()) for s in it["item_title_raw"]],
                                    dtype=object)
         self.mc_items = it["item_microcat_id"].to_numpy()
         self.cat_items = it["item_category_id"].to_numpy()
         self.item_ids = it["item_id"].to_numpy()
-        # сколько объявлений корпуса в каждой локации (размер «рынка»)
+        # сколько объявлений корпуса в каждой локации (размер рынка)
         self.loc_size = it.groupby("item_location_id")["item_id"].transform("size").to_numpy(np.float32)
 
 
@@ -96,9 +96,9 @@ def generate(queries: pd.DataFrame, allowed: dict, R: Resources, q_emb: np.ndarr
              gold: dict | None = None, cfg: GenConfig = GenConfig()) -> pd.DataFrame:
     """Кандидаты + признаки для набора запросов.
 
-    queries — query_id, qn, flt, search_location_id, search_category, chunk;
-    allowed — chunk -> булев вектор «объявление входит в корпус этой порции»;
-    q_emb   — эмбеддинги запросов (в порядке queries); P_mc — вероятности подкатегорий.
+    queries - query_id, qn, flt, search_location_id, search_category, chunk;
+    allowed - chunk -> булев вектор: входит ли объявление в корпус этой порции;
+    q_emb   - эмбеддинги запросов (в порядке queries); P_mc - вероятности подкатегорий.
     """
     import torch
 
@@ -187,7 +187,7 @@ def generate(queries: pd.DataFrame, allowed: dict, R: Resources, q_emb: np.ndarr
                 for k in ("flt_n_keys", "flt_matched"):
                     feats[k] = np.zeros(len(cand), np.float32)
                 for k in ("flt_all", "flt_vid", "flt_tip"):
-                    feats[k] = np.full(len(cand), -1, np.float32)     # «фильтра нет» ≠ «фильтр не выполнен»
+                    feats[k] = np.full(len(cand), -1, np.float32)     # -1 = фильтра нет (не путать с "не выполнен")
             cat = int(row["search_category"])
             feats["cat_ok"] = ((cat == 0) | (R.cat_items[cand] == cat)).astype(np.float32)
             feats["query_cat0"] = np.full(len(cand), float(cat == 0), np.float32)

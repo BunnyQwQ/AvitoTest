@@ -2,11 +2,11 @@
 
     python main.py
 
-1. Данные и валидация: 8 «псевдо-бенчмарков» из train, устроенных как настоящий.
+1. Данные и валидация: 8 псевдо-бенчмарков из train, собранных так же, как настоящий.
 2. Индексы по корпусу: BM25F, символьные n-граммы, эмбеддинги дообученной e5.
 3. Кандидаты и признаки для валидационных порций (история = train без валидации).
-4. Два ранкера LightGBM: основной и «без рубрикатора» для поиска по всем категориям.
-   Учатся на порциях 0–4, ранняя остановка на 5, оценка на 6–7, потом переобучаются на всех.
+4. Два ранкера LightGBM: основной и без признаков рубрикатора (для поиска по всем категориям).
+   Учатся на порциях 0-4, ранняя остановка по 5-й, оценка на 6-7, потом переобучаются на всех.
 5. Бенчмарк: история = весь train, кандидаты, ранжирование, топ-50 -> answer.csv.
 Промежуточные результаты кэшируются в cache/, повторный запуск пропускает готовое.
 """
@@ -110,7 +110,7 @@ def main():
                               ("seen_text", hold_q["qn"].isin(seen)), ("new_text", ~hold_q["qn"].isin(seen))]:
                 report[f"recall@50_main_{seg}"] = recall_at_k(pred, {q: gold[q] for q in hold_q.loc[mask, "query_id"]}, 50)
         report[f"best_iter_{name}"] = int(model.best_iteration)
-        # финальная модель — на всех 8 порциях, деревьев на 10% больше
+        # финальная модель учится на всех 8 порциях, деревьев на 10% больше
         final, feats = RK.train(cand, None, num_boost_round=int(model.best_iteration * 1.1), exclude=exclude)
         final.save_model(str(C.CACHE_DIR / f"ranker_{name}.txt"))
         models[name] = (final, feats)
@@ -127,7 +127,7 @@ def main():
     cand_b = generate(bq.assign(chunk=-1), {-1: in_bench}, R, bq_emb, clf_b.predict_proba(bq["qn"].tolist()),
                       None, cfg)
     cand_b.to_parquet(C.CACHE_DIR / "cand_bench.parquet", index=False)
-    # запросы «по всем категориям» ранжирует модель без признаков рубрикатора Услуг
+    # запросы по всем категориям (search_category = 0) ранжирует модель без признаков рубрикатора Услуг
     cat0 = set(bq.loc[bq["search_category"] == 0, "query_id"])
     pred_b = RK.predict_topk(*models["main"], cand_b[~cand_b["query_id"].isin(cat0)], item_ids)
     pred_b.update(RK.predict_topk(*models["all_categories"], cand_b[cand_b["query_id"].isin(cat0)], item_ids))
